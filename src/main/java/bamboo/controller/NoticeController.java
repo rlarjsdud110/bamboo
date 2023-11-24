@@ -69,8 +69,26 @@ public class NoticeController {
     public List<NoticeDTO> notice(){
         List<NoticeDTO> noticeList = new ArrayList<>();
 
+        //noticeRepository를 통해 모든 공지사항을 조회
+        List<NoticeEntity> noticeEntities = noticeRepository.findAll();
+
+        //조회된 공지사항을 DTO로 변환하여 리스트에 추가
+        for (NoticeEntity noticeEntity : noticeEntities) {
+            NoticeDTO noticeDTO = new NoticeDTO();
+
+            //DTO에 필요한 속성들을 noticeEntity에서 가져와 설정
+            // 통일성
+            noticeDTO.setTitle(noticeEntity.getTitle());
+            noticeDTO.setContent(noticeEntity.getContent());
+            noticeDTO.setCategory(noticeEntity.getCategory());
+            noticeDTO.setWriter(noticeEntity.getWriter());
+            noticeDTO.setStatus(noticeEntity.getStatus());
+            noticeList.add(noticeDTO);
+
+        }
         return noticeList;
     }
+
 
 
 //공지사항 상세 조회(조회수 증가 구현)
