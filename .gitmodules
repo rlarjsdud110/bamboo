@@ -1,0 +1,3 @@
+[submodule "bamboo-env"]
+	path = bamboo-env
+	url = https://github.com/Cloud-Engineering-Board/bamboo-env.git
