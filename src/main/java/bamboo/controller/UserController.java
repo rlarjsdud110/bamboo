@@ -9,8 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import javax.servlet.http.HttpServletRequest;
@@ -35,7 +33,7 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<TokenDTO> saveUser(@RequestPart(value = "user") UserDTO userDTO,
-                                         @RequestPart(required = false, value = "profileImg") MultipartFile multipartFile){
+                                             @RequestPart(required = false, value = "profileImg") MultipartFile multipartFile){
         log.info("[saveUser] 실행 UserDTO = {} ",userDTO);
         TokenDTO tokenDTO;
         try {
@@ -64,7 +62,7 @@ public class UserController {
     @PutMapping
     public ResponseEntity<Void> updateUserInfo(@RequestPart(value = "user") UserDTO userDTO,
                                                @RequestPart(required = false, value = "profileImg") MultipartFile multipartFile,
-                                               @AuthenticationPrincipal User user){
+                                               Principal user){
         log.info("[updateUserInfo] 실행");
         try {
             userService.updateUser(userDTO, multipartFile, user);

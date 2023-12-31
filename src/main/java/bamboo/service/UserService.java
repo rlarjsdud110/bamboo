@@ -12,8 +12,6 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -96,8 +94,8 @@ public class UserService {
     }
 
     @Transactional
-    public void updateUser(UserDTO userDTO, MultipartFile multipartFile,  @AuthenticationPrincipal User user) throws IOException{
-        if(userDTO.getName().equals(user.getUsername())){
+    public void updateUser(UserDTO userDTO, MultipartFile multipartFile,  Principal user) throws IOException{
+        if(userDTO.getName().equals(user.getName())){
             UserEntity userEntity = userRepository.findByName(userDTO.getName())
                     .orElseThrow(() -> new IllegalArgumentException("Unexpected userName"));
             if(multipartFile != null){
