@@ -22,6 +22,14 @@ repositories {
 }
 
 dependencies {
+	implementation 'io.jsonwebtoken:jjwt:0.9.1'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'io.awspring.cloud:spring-cloud-starter-aws:2.4.2'
+	implementation 'org.projectlombok:lombok:1.18.22'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	compileOnly 'org.projectlombok:lombok'
@@ -34,3 +42,17 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+
+repositories {
+	mavenCentral()
+}
+
+task copyPrivate(type: Copy) {
+	copy {
+		from './bamboo-env' //폴더명
+		include "application.yml" //폴더 안에 있는 파일명
+		into 'src/main/resources' //복사할 위치
+	}
+}
+
