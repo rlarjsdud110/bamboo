@@ -11,6 +11,7 @@ import bamboo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -34,6 +35,7 @@ public class SocialService {
     private String tokenUrl;
 
     public String getGoogleAccessToken(String accessCode, String redirectUri) {
+        log.info("[getGoogleAccessToken]메소드 실행");
         RestTemplate restTemplate = new RestTemplate();
         Map<String, String> params = new HashMap<>();
 
@@ -45,10 +47,12 @@ public class SocialService {
 
         ResponseEntity<Map> response = restTemplate.postForEntity(tokenUrl, params, Map.class);
         Map<String, String> map = response.getBody();
+        log.info("[getGoogleAccessToken]메소드 종료");
         return map.get("access_token");
     }
 
     public UserCheckDTO getGoogleUserInfo(String accessToken) {
+        log.info("[getGoogleUserInfo]메소드 실행");
         String url = "https://www.googleapis.com/userinfo/v2/me?access_token="+accessToken;
         RestTemplate restTemplate = new RestTemplate();
         ResponseEntity<Map> response = restTemplate.getForEntity(url,Map.class);
@@ -58,6 +62,8 @@ public class SocialService {
                 .email(map.get("email"))
                 .name(map.get("name"))
                 .build();
+
+        log.info("[getGoogleUserInfo]메소드 종료");
         return userCheckDTO;
     }
 
@@ -70,16 +76,16 @@ public class SocialService {
 
     private UserEntity checkUser(UserCheckDTO userCheckDTO) {
         PeopleEntity people = peopleRepository.findById(userCheckDTO.getName())
-                .orElseThrow(() -> new IllegalArgumentException("Not Found People userName"));
+                .orElseThrow(() -> new CustomException("우리FISA 학생이 아니군요", HttpStatus.BAD_REQUEST));
         if(people.getStatus() == 0){
-            throw new CustomException("Not Found Member", userCheckDTO);
+            throw new CustomException("회원가입이 필요합니다.", userCheckDTO, HttpStatus.BAD_REQUEST);
         }
 
         UserEntity userEntity = userRepository.findByName(userCheckDTO.getName())
-                .orElseThrow(() -> new IllegalArgumentException("Unexpected userName"));
+                .orElseThrow(() -> new CustomException("우리FISA 학생이 아니군요", HttpStatus.BAD_REQUEST));
 
         if(!userEntity.getEmail().equals(userCheckDTO.getEmail())){
-            new IllegalArgumentException("Not Found UserEmail");
+            throw new CustomException("이미 다른 이메일로 회원가입되었습니다.", HttpStatus.BAD_REQUEST);
         }
         return userEntity;
     }

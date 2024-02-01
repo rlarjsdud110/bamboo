@@ -17,7 +17,7 @@ import java.security.Principal;
 
 @Slf4j
 @RequiredArgsConstructor
-@RequestMapping("user")
+@RequestMapping("/user")
 @RestController
 public class UserController {
 
@@ -34,7 +34,7 @@ public class UserController {
     @PostMapping
     public ResponseEntity<TokenDTO> saveUser(@RequestPart(value = "user") UserDTO userDTO,
                                              @RequestPart(required = false, value = "profileImg") MultipartFile multipartFile){
-        log.info("[saveUser] 실행 UserDTO = {} ",userDTO);
+        log.info("[saveUser] 실행");
         TokenDTO tokenDTO;
         try {
             tokenDTO = userService.save(userDTO, multipartFile);
@@ -46,9 +46,9 @@ public class UserController {
     }
 
     @GetMapping("/duplicate")
-    ResponseEntity<?> dupCheck(@RequestParam("nickname") String nickname){
+    ResponseEntity<?> duplicate(@RequestParam("nickname") String nickname){
         log.info("[duplicate] 실행");
-        Boolean result = userService.dupCheck(nickname);
+        Boolean result = userService.duplicate(nickname);
         return ResponseEntity.status(HttpStatus.OK).body(result);
     }
 
@@ -76,7 +76,7 @@ public class UserController {
     @DeleteMapping
     public ResponseEntity<Void> logout(HttpServletRequest request) {
         log.info("[logout] 실행");
-        tokenService.logout(request);
+        userService.logout(request);
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
@@ -88,9 +88,4 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK).body(newAccessToken);
     }
 
-    @ExceptionHandler
-    public ResponseEntity<?> exception(CustomException e){
-        log.info("[exception] CustomException error");
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getUserCheckDTO());
-    }
 }

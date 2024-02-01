@@ -23,8 +23,7 @@ public class CommentEntity {
     private String content;
 
     @Column(name = "created_at")
-    @CreatedDate
-    private LocalDateTime createdAt;
+    private String createdAt;
 
     @Column(name = "writer")
     private String writer;
@@ -32,4 +31,6 @@ public class CommentEntity {
     @Column(name = "writer_img")
     private String writer_img;
 
+    @Column(name = "post_no")
+    private Long postNo;
 }

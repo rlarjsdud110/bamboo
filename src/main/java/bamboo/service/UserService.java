@@ -4,17 +4,23 @@ import bamboo.config.jwt.TokenProvider;
 import bamboo.dto.TokenDTO;
 import bamboo.dto.UserCheckDTO;
 import bamboo.dto.UserDTO;
+import bamboo.entity.PeopleEntity;
+import bamboo.entity.TokenEntity;
 import bamboo.entity.UserEntity;
+import bamboo.exception.CustomException;
 import bamboo.repository.PeopleRepository;
+import bamboo.repository.TokenRepository;
 import bamboo.repository.UserRepository;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.transaction.Transactional;
 import java.io.IOException;
 import java.security.Principal;
@@ -29,12 +35,14 @@ public class UserService {
     private final AmazonS3 amazonS3;
     private final SocialService oauthService;
     private final TokenProvider tokenProvider;
+    private final TokenRepository tokenRepository;
+
     private static final String DEFAULT_PATH = "profile/";
 
     @Value("${cloud.aws.s3.bucket}")
     private String bucketName;
     private String imgUrl = "";
-    private String profileImg = "";
+    private String filePath = "";
 
     public TokenDTO login(String accessCode, String redirectUri){
         log.info("[getGoogleAccessToken] 실행");
@@ -47,21 +55,31 @@ public class UserService {
         return oauthService.loginResult(userCheckDTO);
     }
 
-    public TokenDTO save(UserDTO userDTO, MultipartFile multipartFile) throws IOException {
-        peopleRepository.findByName(userDTO.getName()).get().setStatus(1);
+    public TokenDTO save(UserDTO userDTO, MultipartFile img) throws IOException {
+        log.info("[save]메소드 실행");
+        PeopleEntity peopleEntity = peopleRepository.findByName(userDTO.getName()).orElseThrow(() ->
+                new CustomException("우리FISA 학생이 아니군요", HttpStatus.BAD_REQUEST));
+        if(peopleEntity.getStatus() == 1){
+            throw new CustomException("이미 가입한 회원입니다.", HttpStatus.BAD_REQUEST);
+        }
 
-        if(multipartFile == null){
+        peopleEntity.setStatus(1);
+
+        if(img == null){
             imgUrl = amazonS3.getUrl(bucketName, DEFAULT_PATH+"default").toString();
         } else {
-            profileImg = DEFAULT_PATH + userDTO.getName();
+            log.info("[AWS] S3이미지 업로드 실행");
+            filePath = DEFAULT_PATH + img.getName();
 
             ObjectMetadata metadata = new ObjectMetadata();
-            metadata.setContentLength(multipartFile.getSize());
-            metadata.setContentType(multipartFile.getContentType());
+            metadata.setContentLength(img.getSize());
+            metadata.setContentType(img.getContentType());
 
-            amazonS3.putObject(bucketName, profileImg, multipartFile.getInputStream(), metadata);
-            imgUrl = amazonS3.getUrl(bucketName, profileImg).toString();
+            amazonS3.putObject(bucketName, filePath, img.getInputStream(), metadata);
+            imgUrl = amazonS3.getUrl(bucketName, filePath).toString();
+            log.info("[AWS] S3이미지 업로드 완료");
         }
+
         UserEntity user = UserEntity.builder()
                 .name(userDTO.getName())
                 .email(userDTO.getEmail())
@@ -71,18 +89,20 @@ public class UserService {
                 .role(1)
                 .build();
 
+        peopleRepository.save(peopleEntity);
         userRepository.save(user);
 
         return tokenProvider.createToken(user);
     }
 
-    public Boolean dupCheck(String nickname) {
+    public Boolean duplicate(String nickname) {
         return userRepository.findByNickname(nickname).isEmpty();
     }
 
     public UserDTO getUser(Principal principal){
         UserEntity userEntity = userRepository.findByName(principal.getName()).orElseThrow(() ->
-                new IllegalArgumentException("Unexpected userName"));
+                new CustomException("다시 시도해 주세요.", HttpStatus.BAD_REQUEST));
+
         UserDTO userDTO = UserDTO.builder()
                 .name(userEntity.getName())
                 .email(userEntity.getEmail())
@@ -97,16 +117,16 @@ public class UserService {
     public void updateUser(UserDTO userDTO, MultipartFile multipartFile,  Principal user) throws IOException{
         if(userDTO.getName().equals(user.getName())){
             UserEntity userEntity = userRepository.findByName(userDTO.getName())
-                    .orElseThrow(() -> new IllegalArgumentException("Unexpected userName"));
+                    .orElseThrow(() -> new CustomException("다시 시도해 주세요.", HttpStatus.BAD_REQUEST));
             if(multipartFile != null){
-                profileImg = DEFAULT_PATH + userDTO.getName();
+                filePath = DEFAULT_PATH + userDTO.getName();
 
                 ObjectMetadata metadata = new ObjectMetadata();
                 metadata.setContentLength(multipartFile.getSize());
                 metadata.setContentType(multipartFile.getContentType());
 
-                amazonS3.putObject(bucketName, profileImg, multipartFile.getInputStream(), metadata);
-                imgUrl = amazonS3.getUrl(bucketName, profileImg).toString();
+                amazonS3.putObject(bucketName, filePath, multipartFile.getInputStream(), metadata);
+                imgUrl = amazonS3.getUrl(bucketName, filePath).toString();
 
                 userEntity.update(userDTO.getNickname(), userDTO.getBirth(), imgUrl);
             } else {
@@ -115,9 +135,15 @@ public class UserService {
         }
     }
 
-    public UserEntity findById(int userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Unexpected user"));
-    }
+    public void logout(HttpServletRequest request){
+        log.info("[tokenProvider.delete] 실행");
+        String refreshToken = request.getHeader("R-AUTH-TOKEN");
+        if(!tokenProvider.validationToken(refreshToken)){
+            throw new IllegalArgumentException("[logout] Token Validation");
+        }
+        TokenEntity key = tokenRepository.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new CustomException("토큰이 존재하지 않습니다.", HttpStatus.UNAUTHORIZED));
 
+        tokenProvider.deleteToken(key);
+    }
 }

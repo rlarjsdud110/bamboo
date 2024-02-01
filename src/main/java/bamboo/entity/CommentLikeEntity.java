@@ -21,5 +21,5 @@ public class CommentLikeEntity {
     private int userNo;
 
     @Column(name = "comment_no")
-    private int postNo;
+    private Long commentNo;
 }

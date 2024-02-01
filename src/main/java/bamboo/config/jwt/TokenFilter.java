@@ -1,7 +1,9 @@
 package bamboo.config.jwt;
 
+import bamboo.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -17,7 +19,7 @@ import java.io.IOException;
 public class TokenFilter extends OncePerRequestFilter {
 
     private final TokenProvider tokenProvider;
-    private final static String HEADER_AUTHORIZATION = "X-AUTH-TOKEN";
+    private final String HEADER_AUTHORIZATION = "X-AUTH-TOKEN";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -29,9 +31,16 @@ public class TokenFilter extends OncePerRequestFilter {
         if (authorizationHeader != null) {
             String token = authorizationHeader.trim();
 
-            if (tokenProvider.validationToken(token)) {
-                Authentication authentication = tokenProvider.getAuthentication(token);
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+            try {
+                if (tokenProvider.validationToken(token)) {
+                    Authentication authentication = tokenProvider.getAuthentication(token);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            } catch (CustomException e){
+                response.setStatus(e.getHttpStatus().value());
+                response.setCharacterEncoding("UTF-8");
+                response.getWriter().write("세션이 만료되었습니다.");
+                return;
             }
         }
 

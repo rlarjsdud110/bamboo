@@ -3,6 +3,7 @@ package bamboo.config.jwt;
 import bamboo.dto.TokenDTO;
 import bamboo.entity.TokenEntity;
 import bamboo.entity.UserEntity;
+import bamboo.exception.CustomException;
 import bamboo.repository.TokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Header;
@@ -10,6 +11,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -48,14 +50,14 @@ public class TokenProvider {
                 .refreshToken(refreshToken)
                 .build();
     }
-    public String accessToken(UserEntity user, TokenEntity key){
+    public String accessToken(UserEntity user, TokenEntity token){
         log.info("[accessToken] 실행");
 
         String accessToken = makeToken(ACCESS_TOKEN_DURATION, user);
 
-        key.setAccessToken(accessToken);
+        token.setAccessToken(accessToken);
 
-        tokenRepository.save(key);
+        tokenRepository.save(token);
 
         return accessToken;
     }
@@ -79,7 +81,7 @@ public class TokenProvider {
         tokenRepository.delete(token);
     }
 
-    public boolean validationToken(String token){
+    public boolean validationToken(String token) {
         try {
             log.info("[validationToken] 실행");
             Jwts.parser()
@@ -88,17 +90,14 @@ public class TokenProvider {
             return true;
         } catch (Exception e){
             log.info("[validationToken] 에러");
-            return false;
+            throw new CustomException("세션이 만료되었습니다.", HttpStatus.UNAUTHORIZED);
         }
     }
 
     public Authentication getAuthentication(String token){
         Claims claims = getClaims(token);
-        Set<SimpleGrantedAuthority> authorities =
-                Collections.singleton(new SimpleGrantedAuthority("ROLE_USER"));
 
-        return new UsernamePasswordAuthenticationToken(
-                new User(claims.getSubject(), "", authorities), token, authorities);
+        return new UsernamePasswordAuthenticationToken(claims.getSubject(), token);
     }
 
     private Claims getClaims(String token){

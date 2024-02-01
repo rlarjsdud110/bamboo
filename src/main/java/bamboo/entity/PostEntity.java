@@ -1,10 +1,8 @@
 package bamboo.entity;
 
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-
 import javax.persistence.*;
-import java.time.LocalDateTime;
+import java.util.Date;
 
 @Entity
 @Getter
@@ -26,19 +24,39 @@ public class PostEntity {
     private String content;
 
     @Column(name = "created_at")
-    @CreatedDate
-    private LocalDateTime createdAt;
+    private String createdAt;
 
     @Column(name = "category")
     private int category;
 
-    @Column(name = "writer")
-    private String writer;
+    @Column(name = "writer_no")
+    private int writerNo;
 
     @Column(name = "views")
-    private int views;
+    private Long views;
 
     @Column(name = "status")
     private int status;
 
+    public PostEntity update(String title, String content, int category){
+        this.title = title;
+        this.content = content;
+        this.category = category;
+        this.createdAt = Long.toString(new Date().getTime());
+        return this;
+    }
+
+//    public static PostDTO toPostDTO(PostEntity postEntity){
+//        return PostDTO.builder()
+//                .postNo(postEntity.getPostNo())
+//                .writer(null)
+//                .title(postEntity.getTitle())
+//                .content(postEntity.getContent())
+//                .createdAt(postEntity.getCreatedAt())
+//                .category(postEntity.getCategory())
+//                .views(postEntity.getViews())
+//                .status(postEntity.getStatus())
+//                .likes(0)
+//                .build();
+//    }
 }

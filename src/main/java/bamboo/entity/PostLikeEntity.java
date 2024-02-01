@@ -21,5 +21,5 @@ public class PostLikeEntity {
     private int userNo;
 
     @Column(name = "post_no")
-    private int postNo;
+    private Long postNo;
 }
