@@ -96,10 +96,12 @@ public class TokenProvider {
 
     public Authentication getAuthentication(String token){
         Claims claims = getClaims(token);
+        Set<SimpleGrantedAuthority> authorities =
+                Collections.singleton(new SimpleGrantedAuthority("ROLE_USER"));
 
-        return new UsernamePasswordAuthenticationToken(claims.getSubject(), token);
+        return new UsernamePasswordAuthenticationToken(
+                new User(claims.getSubject(), "", authorities), token, authorities);
     }
-
     private Claims getClaims(String token){
         return Jwts.parser()
                 .setSigningKey(jwtProperties.getSecretKey())
