@@ -1,4 +1,4 @@
-package bamboo.dto;
+package bamboo.dto.ResponseDTO;
 
 import lombok.Builder;
 import lombok.Getter;

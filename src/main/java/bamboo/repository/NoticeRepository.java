@@ -1,6 +1,7 @@
 package bamboo.repository;
 
 import bamboo.entity.NoticeEntity;
+import bamboo.entity.PostEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -9,7 +10,6 @@ import java.util.Optional;
 
 @Repository
 public interface NoticeRepository extends JpaRepository<NoticeEntity, Long> {
-
-    Optional<List<NoticeEntity>> findByIdIn(List<Long> idList);
+    List<NoticeEntity> findByCategory(int category);
 }
 

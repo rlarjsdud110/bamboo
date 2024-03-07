@@ -39,14 +39,15 @@ public class OAuthSecurityConfig {
         httpSecurity.addFilterBefore(tokenFilter(), UsernamePasswordAuthenticationFilter.class);
 
         httpSecurity.authorizeRequests()
-                .antMatchers("/swagger-ui/index.html/**",
+                .antMatchers(
+                        "/swagger-ui/index.html/**",
                         "/favicon.ico",
                         "/error",
                         "/swagger-ui/**",
                         "/swagger-resources/**",
-                        "/v3/api-docs/**").permitAll()
+                        "/v2/api-docs/**").permitAll()
                 .antMatchers(HttpMethod.POST, "/user").permitAll()
-                .antMatchers("/user/token", "/user/duplicate", "/user/signup", "/user/google/**").permitAll()
+                .antMatchers("/user/token", "/user/duplicate", "/user/signup", "/user/google/**", "/test/testLogin").permitAll()
                 .antMatchers("/**").authenticated()
                 .anyRequest().permitAll();
 

@@ -2,19 +2,18 @@ package bamboo.service;
 
 import bamboo.Util.Convert;
 import bamboo.dto.PostDTO;
-import bamboo.dto.RequestPostDTO;
+import bamboo.dto.RequestDTO.RequestPostDTO;
 import bamboo.entity.CommentEntity;
 import bamboo.entity.PostEntity;
 import bamboo.entity.PostLikeEntity;
 import bamboo.entity.UserEntity;
 import bamboo.exception.CustomException;
+import bamboo.exception.ErrorCode;
 import bamboo.repository.*;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,8 +42,7 @@ public class PostService {
     private String bucketName;
 
     public Long save(Principal user, RequestPostDTO requestPostDTO){
-        UserEntity userEntity = userRepository.findByName(user.getName())
-                .orElseThrow(() -> new CustomException("우리FISA 학생이 아니군요", HttpStatus.BAD_REQUEST));
+        UserEntity userEntity = userRepository.findByName(user.getName()).get();
 
         PostEntity postEntity = convert.toEntity(requestPostDTO);
         postEntity.setWriterNo(userEntity.getUserNo());
@@ -66,7 +64,7 @@ public class PostService {
 
     public PostDTO findPost(Long postNo){
         PostEntity postEntity = postRepository.findById(postNo)
-                .orElseThrow(() -> new CustomException("존재하지 않는 게시글 입니다.", HttpStatus.BAD_REQUEST));
+                .orElseThrow(() -> new CustomException("존재하지 않는 게시글 입니다.", ErrorCode.POST_NOT_FOUND));
 
         postEntity.setViews(postEntity.getViews()+1);
         postRepository.save(postEntity);
@@ -78,8 +76,14 @@ public class PostService {
     }
 
     public List<PostDTO> findByCategory(int category){
+
         List<PostEntity> entityList = postRepository.findByCategory(category);
+
         List<PostDTO> postList = new ArrayList<>();
+
+        if(entityList.isEmpty()){
+            throw new CustomException("존재하지 않는 게시글 입니다.", ErrorCode.POST_NOT_FOUND);
+        }
 
         for(PostEntity postEntity : entityList){
             int likes = postLikeRepository.countByPostNo(postEntity.getPostNo());
@@ -93,7 +97,7 @@ public class PostService {
 
     public Long update(RequestPostDTO requestPostDTO){
         PostEntity postEntity = postRepository.findById(requestPostDTO.getPostNo())
-                .orElseThrow(()-> new CustomException("존재하지 않는 게시글 입니다.", HttpStatus.BAD_REQUEST));
+                .orElseThrow(()-> new CustomException("존재하지 않는 게시글 입니다.", ErrorCode.POST_NOT_FOUND));
 
         postEntity.update(requestPostDTO.getTitle(),
                 requestPostDTO.getContent(),
@@ -108,6 +112,10 @@ public class PostService {
     public void delete(Long postNo){
         List<CommentEntity> comments = commentRepository.findByPostNo(postNo);
 
+        if (comments.isEmpty()){
+            throw new CustomException("존재하지 않는 게시글 입니다.", ErrorCode.POST_NOT_FOUND);
+        }
+
         for (CommentEntity comment : comments){
             commentLikeRepository.deleteByCommentNo(comment.getCommentNo());
         }
@@ -118,11 +126,14 @@ public class PostService {
     }
 
     public Boolean likePost(Principal user, Long postNo){
-        UserEntity userEntity = userRepository.findByName(user.getName())
-                .orElseThrow(() -> new CustomException("다시 시도해 주세요.", HttpStatus.BAD_REQUEST));
+        UserEntity userEntity = userRepository.findByName(user.getName()).get();
 
-        Optional<PostLikeEntity> postLike = postLikeRepository.findLikeNoByPostNoAndUserNo(postNo,
+        PostEntity postEntity = postRepository.findById(postNo)
+                .orElseThrow(() -> new CustomException("존재하지 않는 게시글 입니다.", ErrorCode.POST_NOT_FOUND));
+
+        Optional<PostLikeEntity> postLike = postLikeRepository.findLikeNoByPostNoAndUserNo(postEntity.getPostNo(),
                 userEntity.getUserNo());
+
         if (!postLike.isPresent()){
             PostLikeEntity postLikeEntity = PostLikeEntity.builder()
                     .postNo(postNo)

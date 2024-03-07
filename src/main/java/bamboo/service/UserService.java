@@ -2,12 +2,13 @@ package bamboo.service;
 
 import bamboo.config.jwt.TokenProvider;
 import bamboo.dto.TokenDTO;
-import bamboo.dto.UserCheckDTO;
+import bamboo.dto.ResponseDTO.UserCheckDTO;
 import bamboo.dto.UserDTO;
 import bamboo.entity.PeopleEntity;
 import bamboo.entity.TokenEntity;
 import bamboo.entity.UserEntity;
 import bamboo.exception.CustomException;
+import bamboo.exception.ErrorCode;
 import bamboo.repository.PeopleRepository;
 import bamboo.repository.TokenRepository;
 import bamboo.repository.UserRepository;
@@ -16,11 +17,9 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.transaction.Transactional;
 import java.io.IOException;
 import java.security.Principal;
@@ -44,9 +43,9 @@ public class UserService {
     private String imgUrl = "";
     private String filePath = "";
 
-    public TokenDTO login(String accessCode, String redirectUri){
+    public TokenDTO login(String accessCode) {
         log.info("[getGoogleAccessToken] 실행");
-        String googleAccessToken = oauthService.getGoogleAccessToken(accessCode, redirectUri);
+        String googleAccessToken = oauthService.getGoogleAccessToken(accessCode);
 
         log.info("[getGoogleUserInfo] 실행");
         UserCheckDTO userCheckDTO = oauthService.getGoogleUserInfo(googleAccessToken);
@@ -58,15 +57,15 @@ public class UserService {
     public TokenDTO save(UserDTO userDTO, MultipartFile img) throws IOException {
         log.info("[save]메소드 실행");
         PeopleEntity peopleEntity = peopleRepository.findByName(userDTO.getName()).orElseThrow(() ->
-                new CustomException("우리FISA 학생이 아니군요", HttpStatus.BAD_REQUEST));
-        if(peopleEntity.getStatus() == 1){
-            throw new CustomException("이미 가입한 회원입니다.", HttpStatus.BAD_REQUEST);
+                new CustomException("우리FISA 학생이 아니군요", ErrorCode.RETRY));
+        if (peopleEntity.getStatus() == 1) {
+            throw new CustomException("이미 가입한 회원입니다.", ErrorCode.DUPLICATE_EMAIL);
         }
 
         peopleEntity.setStatus(1);
 
-        if(img == null){
-            imgUrl = amazonS3.getUrl(bucketName, DEFAULT_PATH+"default").toString();
+        if (img == null) {
+            imgUrl = amazonS3.getUrl(bucketName, DEFAULT_PATH + "default").toString();
         } else {
             log.info("[AWS] S3이미지 업로드 실행");
             filePath = DEFAULT_PATH + img.getName();
@@ -99,9 +98,8 @@ public class UserService {
         return userRepository.findByNickname(nickname).isEmpty();
     }
 
-    public UserDTO getUser(Principal principal){
-        UserEntity userEntity = userRepository.findByName(principal.getName()).orElseThrow(() ->
-                new CustomException("다시 시도해 주세요.", HttpStatus.BAD_REQUEST));
+    public UserDTO getUser(Principal principal) {
+        UserEntity userEntity = userRepository.findByName(principal.getName()).get();
 
         UserDTO userDTO = UserDTO.builder()
                 .name(userEntity.getName())
@@ -110,15 +108,18 @@ public class UserService {
                 .birth(userEntity.getBirth())
                 .profileImg(userEntity.getProfileImg())
                 .build();
+
         return userDTO;
     }
 
     @Transactional
-    public void updateUser(UserDTO userDTO, MultipartFile multipartFile,  Principal user) throws IOException{
-        if(userDTO.getName().equals(user.getName())){
-            UserEntity userEntity = userRepository.findByName(userDTO.getName())
-                    .orElseThrow(() -> new CustomException("다시 시도해 주세요.", HttpStatus.BAD_REQUEST));
-            if(multipartFile != null){
+    public void updateUser(UserDTO userDTO, MultipartFile multipartFile, Principal user) throws IOException {
+        log.info("[updateUser Service] 실행");
+        if (userDTO.getName().equals(user.getName())) {
+            UserEntity userEntity = userRepository.findByName(userDTO.getName()).get();
+
+            if (multipartFile != null) {
+                log.info("[AWS] S3이미지 업로드 실행");
                 filePath = DEFAULT_PATH + userDTO.getName();
 
                 ObjectMetadata metadata = new ObjectMetadata();
@@ -135,15 +136,26 @@ public class UserService {
         }
     }
 
-    public void logout(HttpServletRequest request){
+    public void logout(String refreshToken) {
         log.info("[tokenProvider.delete] 실행");
-        String refreshToken = request.getHeader("R-AUTH-TOKEN");
-        if(!tokenProvider.validationToken(refreshToken)){
-            throw new IllegalArgumentException("[logout] Token Validation");
-        }
-        TokenEntity key = tokenRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new CustomException("토큰이 존재하지 않습니다.", HttpStatus.UNAUTHORIZED));
+        if (tokenProvider.validationToken(refreshToken)) {
+            TokenEntity key = tokenRepository.findByRefreshToken(refreshToken)
+                    .orElseThrow(() -> new CustomException("토큰이 존재하지 않습니다.", ErrorCode.TOKEN_NOT_FOUND));
 
-        tokenProvider.deleteToken(key);
+            tokenProvider.deleteToken(key);
+        }
+    }
+
+    public TokenDTO testLogin(UserCheckDTO userCheckDTO) {
+        log.info("[testLogin service]메소드 실행");
+
+        if (userCheckDTO.getEmail().equals("rjsdud1827@gmail.com")) {
+
+            UserEntity user = userRepository.findByName(userCheckDTO.getName())
+                    .orElseThrow(() -> new CustomException("이메일 다시 입력해주세요", ErrorCode.RETRY));
+
+            return tokenProvider.createToken(user);
+        }
+        return null;
     }
 }

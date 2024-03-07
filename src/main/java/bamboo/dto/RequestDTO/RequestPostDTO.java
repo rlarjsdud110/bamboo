@@ -1,5 +1,6 @@
-package bamboo.dto;
+package bamboo.dto.RequestDTO;
 
+import io.swagger.annotations.ApiModelProperty;
 import lombok.*;
 
 
@@ -9,6 +10,7 @@ import lombok.*;
 @Setter
 @Builder
 public class RequestPostDTO {
+    @ApiModelProperty(hidden = true)
     private Long postNo;
     private String title;
     private String content;

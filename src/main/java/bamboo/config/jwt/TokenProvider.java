@@ -4,6 +4,7 @@ import bamboo.dto.TokenDTO;
 import bamboo.entity.TokenEntity;
 import bamboo.entity.UserEntity;
 import bamboo.exception.CustomException;
+import bamboo.exception.ErrorCode;
 import bamboo.repository.TokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Header;
@@ -90,7 +91,7 @@ public class TokenProvider {
             return true;
         } catch (Exception e){
             log.info("[validationToken] 에러");
-            throw new CustomException("세션이 만료되었습니다.", HttpStatus.UNAUTHORIZED);
+            throw new CustomException("토큰 정보가 잘못됐거나 토큰이 만료되었습니다.", ErrorCode.SESSION_EXPIRED);
         }
     }
 

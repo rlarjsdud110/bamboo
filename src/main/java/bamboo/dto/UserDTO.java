@@ -1,5 +1,6 @@
 package bamboo.dto;
 
+import io.swagger.annotations.ApiModelProperty;
 import lombok.*;
 
 
@@ -10,8 +11,10 @@ import lombok.*;
 @Setter
 public class UserDTO {
     private String name;
+    @ApiModelProperty(hidden = true)
     private String email;
+    @ApiModelProperty(hidden = true)
+    private String profileImg;
     private String nickname;
     private String birth;
-    private String profileImg;
 }

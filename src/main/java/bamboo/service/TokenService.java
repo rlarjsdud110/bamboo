@@ -4,6 +4,7 @@ import bamboo.config.jwt.TokenProvider;
 import bamboo.entity.TokenEntity;
 import bamboo.entity.UserEntity;
 import bamboo.exception.CustomException;
+import bamboo.exception.ErrorCode;
 import bamboo.repository.TokenRepository;
 import bamboo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,19 +23,18 @@ public class TokenService {
     private final UserRepository userRepository;
     private final TokenRepository tokenRepository;
 
-    public String createAccessToken(HttpServletRequest request){
+    public String createAccessToken(String refreshToken){
         log.info("[createAccessToken] 실행");
-        String refreshToken = request.getHeader("R-AUTH-TOKEN");
 
         if(!tokenProvider.validationToken(refreshToken)){
-            throw new IllegalArgumentException("[createAccessToken] Token Validation");
+            throw new CustomException("토큰이 존재하지 않습니다.", ErrorCode.TOKEN_NOT_FOUND);
         }
 
         TokenEntity token = tokenRepository.findByRefreshToken(refreshToken)
-                .orElseThrow(() -> new CustomException("토큰이 존재하지 않습니다.", HttpStatus.UNAUTHORIZED));
+                .orElseThrow(() -> new CustomException("토큰이 존재하지 않습니다.", ErrorCode.TOKEN_NOT_FOUND));
 
         UserEntity user = userRepository.findById(tokenProvider.getUserNo(token.getRefreshToken()))
-                .orElseThrow(() -> new CustomException("다시 시도해 주세요.", HttpStatus.BAD_REQUEST));
+                .orElseThrow(() -> new CustomException("다시 시도해 주세요.", ErrorCode.RETRY));
 
         return tokenProvider.accessToken(user, token);
     }

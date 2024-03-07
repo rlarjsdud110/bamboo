@@ -37,22 +37,7 @@ dependencies {
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+	implementation 'io.springfox:springfox-boot-starter:3.0.0'
+
 }
-
-tasks.named('test') {
-	useJUnitPlatform()
-}
-
-
-repositories {
-	mavenCentral()
-}
-
-task copyPrivate(type: Copy) {
-	copy {
-		from './bamboo-env' //폴더명
-		include "application.yml" //폴더 안에 있는 파일명
-		into 'src/main/resources' //복사할 위치
-	}
-}
-

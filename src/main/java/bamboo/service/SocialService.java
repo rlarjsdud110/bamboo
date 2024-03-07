@@ -2,16 +2,16 @@ package bamboo.service;
 
 import bamboo.config.jwt.TokenProvider;
 import bamboo.dto.TokenDTO;
-import bamboo.dto.UserCheckDTO;
+import bamboo.dto.ResponseDTO.UserCheckDTO;
 import bamboo.entity.PeopleEntity;
 import bamboo.entity.UserEntity;
 import bamboo.exception.CustomException;
+import bamboo.exception.ErrorCode;
 import bamboo.repository.PeopleRepository;
 import bamboo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -34,7 +34,10 @@ public class SocialService {
     @Value("${spring.security.oauth2.client.registration.google.token-url}")
     private String tokenUrl;
 
-    public String getGoogleAccessToken(String accessCode, String redirectUri) {
+    @Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
+    private String redirect;
+
+    public String getGoogleAccessToken(String accessCode) {
         log.info("[getGoogleAccessToken]메소드 실행");
         RestTemplate restTemplate = new RestTemplate();
         Map<String, String> params = new HashMap<>();
@@ -42,12 +45,11 @@ public class SocialService {
         params.put("code", accessCode);
         params.put("client_id", clientId);
         params.put("client_secret", clientSecret);
-        params.put("redirect_uri", redirectUri);
+        params.put("redirect_uri", redirect);
         params.put("grant_type", "authorization_code");
 
         ResponseEntity<Map> response = restTemplate.postForEntity(tokenUrl, params, Map.class);
         Map<String, String> map = response.getBody();
-        log.info("[getGoogleAccessToken]메소드 종료");
         return map.get("access_token");
     }
 
@@ -76,16 +78,15 @@ public class SocialService {
 
     private UserEntity checkUser(UserCheckDTO userCheckDTO) {
         PeopleEntity people = peopleRepository.findById(userCheckDTO.getName())
-                .orElseThrow(() -> new CustomException("우리FISA 학생이 아니군요", HttpStatus.BAD_REQUEST));
+                .orElseThrow(() -> new CustomException("우리FISA 학생이 아니군요", ErrorCode.NOT_FISA_STUDENT));
         if(people.getStatus() == 0){
-            throw new CustomException("회원가입이 필요합니다.", userCheckDTO, HttpStatus.BAD_REQUEST);
+            throw new CustomException("회원가입이 필요합니다.", userCheckDTO, ErrorCode.SIGNUP_REQUIRED);
         }
 
-        UserEntity userEntity = userRepository.findByName(userCheckDTO.getName())
-                .orElseThrow(() -> new CustomException("우리FISA 학생이 아니군요", HttpStatus.BAD_REQUEST));
+        UserEntity userEntity = userRepository.findByName(userCheckDTO.getName()).get();
 
         if(!userEntity.getEmail().equals(userCheckDTO.getEmail())){
-            throw new CustomException("이미 다른 이메일로 회원가입되었습니다.", HttpStatus.BAD_REQUEST);
+            throw new CustomException("이미 다른 이메일로 회원가입되었습니다.", ErrorCode.OTHER_EMAIL_REGISTERED);
         }
         return userEntity;
     }
