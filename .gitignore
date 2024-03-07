@@ -176,5 +176,6 @@ Temporary Items
 
 # Exclude application.yml file
 /src/main/resources/application.yml
+application.yml
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,java,intellij,redis
